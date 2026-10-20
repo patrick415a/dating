@@ -47,5 +47,8 @@
 **/.git-backup/
 
 # Database
-**/database.js
 **/*.backup
+
+# Uploaded user files
+backend/uploads/*
+!backend/uploads/.gitkeep
