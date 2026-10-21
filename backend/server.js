@@ -8,6 +8,7 @@ const User = require('./models/User');
 const Match = require('./models/Match');
 const Diary = require('./models/Diary');
 const Admin = require('./models/Admin');
+require('dotenv').config();
 
 const app = express();
 
@@ -292,7 +293,7 @@ app.listen(PORT, async () => {
   // add 관리자 계정이 db에 하나도 없으면 자동으로 생성
   const adminCount = await Admin.count();
   if(adminCount === 0){
-    const hashedAdminPassword = await bcrypt.hash('1234', 10);
+    const hashedAdminPassword = await bcrypt.hash(process.env.DB_ADMINPASSWORD, 10);
     await Admin.create({
       email: 'test@test.com',
       password: hashedAdminPassword,
