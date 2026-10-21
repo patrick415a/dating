@@ -288,7 +288,7 @@ app.listen(PORT, async () => {
   // await sequelize.sync({ force: true }); 
   // 👉 3. 테이블이 예쁘게 만들어졌으니 '관계 보호 장치'를 다시 켭니다.
   // await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
-  await sequelize.sync({alter: true});
+  //await sequelize.sync({alter: true});
 
   // add 관리자 계정이 db에 하나도 없으면 자동으로 생성
   const adminCount = await Admin.count();

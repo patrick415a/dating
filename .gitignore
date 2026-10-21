@@ -47,4 +47,12 @@
 **/.git-backup/
 
 # Database
+<<<<<<< HEAD
 **/*.backup
+=======
+**/*.backup
+
+# Uploaded user files
+backend/uploads/*
+!backend/uploads/.gitkeep
+>>>>>>> 2db8b2588b2b43a7eafe333750fe73864ee7cb1e
