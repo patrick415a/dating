@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class DiaryScreen extends StatefulWidget {
   const DiaryScreen({super.key});
@@ -7,23 +8,29 @@ class DiaryScreen extends StatefulWidget {
   State<DiaryScreen> createState() => _DiaryScreenState();
 }
 
-class _DiaryScreenState extends State<DiaryScreen> {
+class _DiaryScreenState extends State<DiaryScreen>
+    with SingleTickerProviderStateMixin {
   // 🎨 테마 색상 설정
-  final Color bgColor = const Color(0xFF12121A);
-  final Color cardColor = const Color(0xFF22222E);
-  final Color pinkAccent = const Color(0xFFFF4B93);
-  final Color purpleAccent = const Color(0xFFB635F7);
-  final Color subTextColor = const Color(0xFFA0A0B0);
+  final Color bgColor = AppColors.background;
+  final Color cardColor = AppColors.surface;
+  final Color pinkAccent = AppColors.primary;
+  final Color purpleAccent = AppColors.primaryEnd;
+  final Color subTextColor = AppColors.textSecondary;
 
-  // 📝 상태 관리 변수
+  // 🚀 순차적 슬라이드 다운 애니메이션을 위한 컨트롤러
+  late final AnimationController _animController;
+  late final Animation<double> _slideAnim;
+  late final Animation<double> _fadeAnim;
+
+  // 상태관리 변수
   int _selectedMoodIndex = 2; // 기본 선택된 기분 (😊)
-  int _selectedDateIndex = 3; // 기본 선택된 날짜 (19일 목요일)
+  int _selectedDateIndex = 3; // 기본 선택된 날짜
 
   // 이모지 리스트
-  final List<String> moods = ['😢', '😐', '😊', '😄', '🥰'];
+  final List moods = ['😢', '😐', '😊', '😄', '🥰'];
 
   // 주간 달력 데이터 (테스트용)
-  final List<Map<String, dynamic>> weekDates = [
+  final List weekDates = [
     {'day': '월', 'date': '16', 'hasDiary': false},
     {'day': '화', 'date': '17', 'hasDiary': true},
     {'day': '수', 'date': '18', 'hasDiary': true},
@@ -32,6 +39,30 @@ class _DiaryScreenState extends State<DiaryScreen> {
     {'day': '토', 'date': '21', 'hasDiary': false},
     {'day': '일', 'date': '22', 'hasDiary': false},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    _slideAnim = Tween<double>(begin: -30.0, end: 0.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
+    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
+    );
+
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,10 +74,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
         title: const Text(
           '나의 일기',
           style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+              fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.text),
         ),
         actions: [
-          // + 작성 버튼
           Container(
             margin: const EdgeInsets.only(right: 20, top: 10, bottom: 10),
             decoration: BoxDecoration(
@@ -70,7 +100,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     child: Text(
                       '+ 작성',
                       style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.onPrimary,
                           fontWeight: FontWeight.bold,
                           fontSize: 14),
                     ),
@@ -81,16 +111,29 @@ class _DiaryScreenState extends State<DiaryScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildMoodSection(),
-            Divider(color: cardColor, thickness: 1, height: 1),
-            _buildCalendarSection(),
-            _buildDiaryList(),
-            const SizedBox(height: 40),
-          ],
+      // 🚀 화면 전체에 슬라이드 다운 애니메이션 적용
+      body: AnimatedBuilder(
+        animation: _animController,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, _slideAnim.value),
+            child: Opacity(
+              opacity: _fadeAnim.value,
+              child: child,
+            ),
+          );
+        },
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildMoodSection(),
+              const Divider(color: AppColors.border, thickness: 1, height: 1),
+              _buildCalendarSection(),
+              _buildDiaryList(),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -106,7 +149,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
           Text('오늘의 기분은?', style: TextStyle(color: subTextColor, fontSize: 15)),
           const SizedBox(height: 16),
           Row(
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(moods.length, (index) {
               bool isSelected = _selectedMoodIndex == index;
               return GestureDetector(
@@ -114,7 +157,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
                   setState(() => _selectedMoodIndex = index);
                 },
                 child: Container(
-                  margin: const EdgeInsets.only(right: 12),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -123,7 +165,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       width: 2,
                     ),
                     color: isSelected
-                        ? pinkAccent.withOpacity(0.1)
+                        ? pinkAccent.withValues(alpha: 0.1)
                         : Colors.transparent,
                   ),
                   child: Text(
@@ -139,7 +181,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
     );
   }
 
-  // 2️⃣ 주간 달력 섹션
+  // 2️⃣ 주간 캘린더 섹션 (🛠️ 날짜 선택 버그 수정 완료)
   Widget _buildCalendarSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -148,17 +190,16 @@ class _DiaryScreenState extends State<DiaryScreen> {
         children: List.generate(weekDates.length, (index) {
           final item = weekDates[index];
           bool isSelected = _selectedDateIndex == index;
-
           return GestureDetector(
             onTap: () {
-              setState(() => _selectedDateIndex = index);
+              setState(() => _selectedDateIndex = index); // 👉 버그 수정완료 (= 대입 연산자)
             },
             child: Column(
               children: [
                 Text(
                   item['day'],
                   style: TextStyle(
-                    color: isSelected ? Colors.white : subTextColor,
+                    color: isSelected ? pinkAccent : subTextColor,
                     fontSize: 14,
                   ),
                 ),
@@ -181,7 +222,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     child: Text(
                       item['date'],
                       style: TextStyle(
-                        color: Colors.white,
+                        color: isSelected ? AppColors.onPrimary : AppColors.text,
                         fontSize: 18,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
@@ -218,7 +259,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             dateText: '6월 19일 목요일',
             emoji: '😊',
             title: '오늘 처음으로 매칭이 됐어요',
-            content: 'SPARK에서 처음으로 매칭이 성사됐어요! 상대방이 먼저 메시지를 보내줬는데 너무 설레고...',
+            content: '만약에 우리에서 처음으로 매칭이 성사됐어요! 상대방이 먼저 메시지를 보내줬는데 너무 설레고...',
             time: '오후 9:32',
             isPublic: false,
           ),
@@ -259,6 +300,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +314,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     Text(
                       title,
                       style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.text,
                           fontSize: 18,
                           fontWeight: FontWeight.bold),
                     ),

@@ -1,11 +1,11 @@
 {
-    "name": "dating_web",
-    "short_name": "dating_web",
+    "name": "만약에 우리",
+    "short_name": "만약에 우리",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FAF7F2",
+    "theme_color": "#FAF7F2",
+    "description": "가까운 곳에서 시작되는 새로운 인연, 만약에 우리",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

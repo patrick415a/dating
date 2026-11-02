@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'theme/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 
+import 'services/bgm_player.dart'; // 오디오 서비스 임포트
+import 'widgets/brand_logo.dart';
+
 // 📂 쪼개놓은 스크린 파일들 불러오기
-import 'screens/splash_screen.dart'; // (현재 오타난 파일명 기준)
+import 'screens/splash_screen.dart';
 import 'screens/my_page_screen.dart';
 import 'screens/chat_list_screen.dart';
 import 'screens/diary_screen.dart';
@@ -21,23 +25,27 @@ class DatingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SPARK Dating Web',
+      title: AppBrand.name,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF12121A),
-      ),
-      builder: (context, child){
-        return Container(
-          color: Colors.black,
-          child: Center(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: 480),
-              clipBehavior: Clip.hardEdge,
-              decoration: BoxDecoration(
-                color: Color(0xFF12121A),
+      theme: AppTheme.light,
+      // 💡 [핵심] 웹 브라우저 자동 재생 정책을 풀기 위해 전체 도화지(Builder)에 GestureDetector 추가
+      builder: (context, child) {
+        return GestureDetector(
+          onTap: () {
+            // 사용자가 화면의 어느 곳이든 처음 터치/클릭하는 순간 BgmPlayer 강제 구동!
+            BgmPlayer().playBgm();
+          },
+          child: Container(
+            color: AppColors.canvas,
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 480),
+                clipBehavior: Clip.hardEdge,
+                decoration: const BoxDecoration(
+                  color: AppColors.background,
+                ),
+                child: child,
               ),
-              child: child
             ),
           ),
         );
@@ -60,42 +68,42 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> {
-  final Color pinkAccent = const Color(0xFFFF4B93);
+  final Color pinkAccent = AppColors.primary;
   late int _selectedIndex;
 
   // 💡 하단 탭을 눌렀을 때 교체될 알맹이 화면들 (순서 중요!)
   final List<Widget> _pages = [
     const MapSearchScreen(), // 0: 매칭 (홈 화면)
     const CommunityScreen(), // 1: 커뮤니티
-    const DiaryScreen(), // 2: 일기
-    const ChatListScreen(), // 3: 채팅
-    const MyPageScreen(), // 4: 마이페이지
+    const DiaryScreen(),     // 2: 일기
+    const ChatListScreen(),  // 3: 채팅
+    const MyPageScreen(),    // 4: 마이페이지
   ];
 
   @override
   void initState() {
     super.initState();
+    // 메인 화면 진입 시 BGM 재생 시도
+    BgmPlayer().playBgm();
     _selectedIndex = widget.initialIndex;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 선택된 인덱스에 맞춰 body 부분만 스르륵 교체됩니다.
       body: _pages[_selectedIndex],
-      
-      // 하단바는 이 RootScreen에 딱 한 번만 정의합니다.
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
         ),
         child: BottomNavigationBar(
-          backgroundColor: const Color(0xFF1A1A24),
+          backgroundColor: AppColors.surface,
           type: BottomNavigationBarType.fixed,
           currentIndex: _selectedIndex,
           selectedItemColor: pinkAccent,
-          unselectedItemColor: Colors.grey,
+          unselectedItemColor: AppColors.textSecondary,
+          elevation: 0,
           selectedFontSize: 12,
           unselectedFontSize: 12,
           onTap: (index) {
@@ -104,8 +112,8 @@ class _RootScreenState extends State<RootScreen> {
             });
           },
           items: [
-            _buildBottomNavItem('매칭', Icons.local_fire_department, 0),
-            _buildBottomNavItem('커뮤니티', Icons.language, 1),
+            _buildBottomNavItem('매칭', Icons.favorite_border, 0),
+            _buildBottomNavItem('커뮤니티', Icons.people_outline, 1),
             _buildBottomNavItem('일기', Icons.menu_book, 2),
             _buildBottomNavItem('채팅', Icons.chat_bubble_outline, 3),
             _buildBottomNavItem('MY', Icons.person_outline, 4),
@@ -121,7 +129,7 @@ class _RootScreenState extends State<RootScreen> {
       icon: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isSelected ? pinkAccent.withOpacity(0.15) : Colors.transparent,
+          color: isSelected ? pinkAccent.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon),
@@ -134,7 +142,6 @@ class _RootScreenState extends State<RootScreen> {
 // ============================================================================
 // 🔥 매칭 홈 화면 (알맹이 1번) - 하단바 코드를 모두 제거했습니다!
 // ============================================================================
-//프로필 데이터를 담아둘 모델
 class Profile {
   final int id;
   final String nickname;
@@ -219,13 +226,7 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Color(0xFFFF4B93), size: 24),
-            SizedBox(width: 4),
-            Text('SPARK', style: TextStyle(color: Color(0xFFFF4B93), fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-          ],
-        ),
+        title: const BrandLogo(fontSize: 19, markSize: 28),
         actions: [
           _buildTopIcon(Icons.notifications_none),
           const SizedBox(width: 8),
@@ -234,12 +235,12 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF4B93)))
-          : profiles.isEmpty 
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : profiles.isEmpty
               ? const Center(child: Text('더 이상 추천할 프로필이 없습니다.'))
               : SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(20.0), 
+                    padding: const EdgeInsets.all(20.0),
                     child: CardSwiper(
                       controller: controller,
                       cardsCount: profiles.length,
@@ -255,15 +256,14 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
                     ),
                   ),
                 ),
-      // 💡 [핵심] 기존에 있던 bottomNavigationBar 코드는 모두 지웠습니다! RootScreen이 대신 해줍니다.
     );
   }
 
   Widget _buildTopIcon(IconData icon) {
     return Container(
       width: 40, height: 40,
-      decoration: BoxDecoration(color: const Color(0xFF22222E), borderRadius: BorderRadius.circular(12)),
-      child: Icon(icon, color: Colors.white, size: 22),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+      child: Icon(icon, color: AppColors.text, size: 22),
     );
   }
 
@@ -271,7 +271,7 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 5))],
+        boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 5))],
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -280,13 +280,13 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
           profile.photoUrl != null
               ? Image.network(profile.photoUrl!, fit: BoxFit.cover)
               : Container(
-                  decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF4AC2F5), Color(0xFF00C6B8)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-                  child: const Center(child: Icon(Icons.person, size: 120, color: Colors.black12)),
+                  decoration: const BoxDecoration(gradient: LinearGradient(colors: [AppColors.primarySoft, AppColors.blush], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                  child: const Center(child: Icon(Icons.person, size: 120, color: AppColors.border)),
                 ),
           Positioned(
             bottom: 0, left: 0, right: 0, height: 250,
             child: Container(
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.9)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withValues(alpha: 0.9)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
             ),
           ),
           Positioned(
@@ -296,9 +296,9 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
               children: [
                 Row(
                   children: [
-                    Text('${profile.nickname} ${profile.age}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text('${profile.nickname} ${profile.age}', style: const TextStyle(color: AppColors.onPrimary, fontSize: 28, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
-                    const Icon(Icons.verified, color: Colors.lightBlueAccent, size: 24),
+                    const Icon(Icons.verified, color: AppColors.blue, size: 24),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -310,7 +310,7 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(profile.bio, style: const TextStyle(color: Colors.white, fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(profile.bio, style: const TextStyle(color: AppColors.onPrimary, fontSize: 15), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -330,8 +330,8 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
   Widget _buildInterestChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-      child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13)),
+      decoration: BoxDecoration(color: AppColors.onPrimary.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+      child: Text(text, style: const TextStyle(color: AppColors.onPrimary, fontSize: 13)),
     );
   }
 }

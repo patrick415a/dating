@@ -6,8 +6,8 @@ const Match = sequelize.define('Match', {
     sender_id: { type: DataTypes.BIGINT, allowNull: false },
     receiver_id: { type: DataTypes.BIGINT, allowNull: false },
     status: { 
-      type: DataTypes.ENUM('REQUESTED', 'ACCEPTED', 'NO_SHOW'),
-      defaultValue: 'REQUESTED' 
+        type: DataTypes.ENUM('REQUESTED', 'ACCEPTED', 'NO_SHOW'),
+        defaultValue: 'REQUESTED' 
     },
     action: { type: DataTypes.STRING, allowNull: true }
 }, {
