@@ -31,7 +31,7 @@ DB에 있는 사람의 (longitude, latitude)와
 내 현재 위치(lng, lat) 사이의 거리를 미터로 계산해 줍니다.
 */
 const distanceQuery = sequelize.literal(
-`ST_Distance_Sphere(point(logitude, latitude), point(${lng}, ${lat}))`    
+`ST_Distance_Sphere(point(longitude, latitude), point(${lng}, ${lat}))`    
 );
 
 /*
@@ -64,4 +64,6 @@ res.status(500).json({
 success:false, message:'서버 에러'
 })
     }
-})
+});
+
+module.exports = router;

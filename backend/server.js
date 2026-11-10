@@ -10,11 +10,21 @@ const User = require('./models/User');
 const Match = require('./models/Match');
 const Diary = require('./models/Diary');
 const Admin = require('./models/Admin');
+const MatchRequest = require('./models/MatchRequest');
+const PointHistory = require('./models/PointHistory');
+
+// 라우터
+const matchRouter = require('./routes/match');
+const mapRouter = require('./routes/map');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// router 연결
+app.use('/api/match', matchRouter);
+app.use('/api/map', mapRouter);
 
 const multer = require('multer');
 const path = require('path');
@@ -255,6 +265,8 @@ app.listen(PORT, async () => {
     // 👉 3. 테이블이 예쁘게 만들어졌으니 '관계 보호 장치'를 다시 켭니다.
     // await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     // await sequelize.sync({alter: true});
+    // await MatchRequest.sync();
+    // await PointHistory.sync();
 
     const adminCount = await Admin.count();
     if (adminCount === 0) {

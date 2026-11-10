@@ -4,7 +4,7 @@ const router = express.Router();
 
 /* DB와 통신하기 위해 필요한 모델들(유저, 매칭요청, 포인트내역)과 
 트랜잭션용 sequelize를 불러옵니다.*/
-const {User, MatchRequest, PointHistory, sequellize} = 
+const {User, MatchRequest, PointHistory, sequelize} = 
 require('../models');
 
 //1. 매칭 요청 API
@@ -77,11 +77,11 @@ res.status(500).json({success:false, message:'서버 에러'});
 })
 
 //만남완료 api(실제 만났을 때 포인트 동시 차감)
-router.post('./complete', async(req, res) => {
+router.post('/complete', async(req, res) => {
 const MATCH_COST = 10000;
 //돈이 오가는 과정이므로 중간에 서버가 꺼져도 
 // 원상복구되도록 '트랜잭션'을 시작합니다.
-const t = await sequellize.transaction();
+const t = await sequelize.transaction();
 try{
 const {requestId} = req.body;
 //해당 매칭 요청을 찾아옵니다. (조회할 때도 트랜잭션 t에 묶어둡니다)
