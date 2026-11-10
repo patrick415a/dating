@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+
+// add
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import '../theme/app_theme.dart';
 import '../widgets/brand_logo.dart';
 
@@ -131,57 +136,75 @@ Future<void> _loginToBackend() async {
       body:jsonEncode({'email':email, 'password':password}),
     );
     final data = jsonDecode(response.body);
-//로그인 성공 시 (상태가 ACTIVE)
-if(response.statusCode == 200 && data['success'] == true){
-  //if nest
-  if (mounted) {
-    final user = data['user'];
-      if (user['phone_number'] == null || user['occupation'] == null){
+  //로그인 성공 시 (상태가 ACTIVE)
+  if(response.statusCode == 200 && data['success'] == true){
+    //if nest
+    if (mounted) {
+      final user = data['user'];
+        if (user['phone_number'] == null || user['occupation'] == null){
+              Navigator.pushReplacement(
+                context, 
+                MaterialPageRoute(builder: (context) => SecondarySignupScreen(userId: user['id'])),
+              );
+          }else{
             Navigator.pushReplacement(
-              context, 
-              MaterialPageRoute(builder: (context) => SecondarySignupScreen(userId: user['id'])),
+              context, MaterialPageRoute(builder: (context) => const RootScreen()),
             );
-        }else{
-          Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (context) => const RootScreen()),
-          );
+          }
         }
-       }
-  //403 에러 (관리자 승인 대기 또는 영구정지)
-}else if(response.statusCode == 403) {
-// 승인 대기 코드를 우선 확인하고, 이전 서버의 응답 문구도 호환합니다.
-if (data['code'] == 'PROFILE_REVIEW_PENDING' ||
-    data['message']?.contains('프로필 검사') == true ||
-    data['message']?.contains('수질 검사') == true){
-  if(mounted) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const PendingApprovalScreen()),      
+    //403 에러 (관리자 승인 대기 또는 영구정지)
+  }else if(response.statusCode == 403) {
+  // 승인 대기 코드를 우선 확인하고, 이전 서버의 응답 문구도 호환합니다.
+  if (data['code'] == 'PROFILE_REVIEW_PENDING' ||
+      data['message']?.contains('프로필 검사') == true ||
+      data['message']?.contains('수질 검사') == true){
+    if(mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingApprovalScreen()),      
+      );
+    }
+  }else{
+    //노쇼 3번으로 영구 정지(BANNED)된 경우 등은 빨간색 에러창 출력
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(data['message'] ?? '접근할수 없는 계정 입니다'),
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
-}else{
-  //노쇼 3번으로 영구 정지(BANNED)된 경우 등은 빨간색 에러창 출력
+  }else{//401(비밀번호 틀림) 등 기타 실패 
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(data['message'] ?? '접근할수 없는 계정 입니다'),
-      backgroundColor: AppColors.error,
-      duration: const Duration(seconds: 3),
-    ),
+  SnackBar(content:Text(data['message'] ?? '이메일이나 비밀번호가 틀렸습니다')),
   );
-}
-}else{//401(비밀번호 틀림) 등 기타 실패 
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(content:Text(data['message'] ?? '이메일이나 비밀번호가 틀렸습니다')),
-);
-}
-}catch (e) {
-  print('로그인 통신 에러: $e');
-  ScaffoldMessenger.of(context).showSnackBar(
-const SnackBar(content: Text('서버와 연결할 수 없습니다. 백엔드 상태를 확인해주세요.'))
-  );
-}
-}
-  
+  }
+  }catch (e) {
+    print('로그인 통신 에러: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('서버와 연결할 수 없습니다. 백엔드 상태를 확인해주세요.'))
+    );
+  }
+  }
+
+  String get _socialApiUrl {
+    return "";
+  }
+
+  // 공통 소셜 로그인 통신 함수
+  Future<void> _socialLoginToBackend(String email, String provider, String providerId, String nickname) async {
+
+  }
+
+  // 카카오 로그인 실행 함수 
+  Future<void> _loginWithKakao() async {
+
+  }
+
+  // 구글 로그인 실행 함수
+  Future<void> _loginWithGoogle() async {
+    
+  }
   
   //[3] 화면을 그리는 메인 함수
   @override
@@ -284,7 +307,7 @@ const SnackBar(content: Text('서버와 연결할 수 없습니다. 백엔드 �
                                   const SizedBox(height: 32),
                                   _buildKakaoButton(),
                                   const SizedBox(height: 16),
-                                  _buildAppleButton(),
+                                  _buildGoogleButton(),
                                   const SizedBox(height: 48),
                                   _buildSignupLink(),
                                 ],
@@ -537,16 +560,27 @@ const SnackBar(content: Text('서버와 연결할 수 없습니다. 백엔드 �
       color: AppColors.kakao,
       textColor: AppColors.text,
       icon: Icons.chat_bubble,
+      onTap: () => _loginWithKakao()
     );
   }
 
   //애플 로그인 버튼
-  Widget _buildAppleButton() {
+  // Widget _buildAppleButton() {
+  //   return _buildSocialButton(
+  //     text: 'Apple로 시작하기',
+  //     color: cardColor,
+  //     textColor: AppColors.text,
+  //     icon: Icons.apple,
+  //   );
+  // }
+
+  Widget _buildGoogleButton() {
     return _buildSocialButton(
-      text: 'Apple로 시작하기',
+      text: 'Google로 시작하기',
       color: cardColor,
       textColor: AppColors.text,
-      icon: Icons.apple,
+      icon: Icons.g_mobiledata,
+      onTap: () => _loginWithGoogle()
     );
   }
 
@@ -556,6 +590,7 @@ const SnackBar(content: Text('서버와 연결할 수 없습니다. 백엔드 �
     required Color color,
     required Color textColor,
     required IconData icon,
+    required VoidCallback onTap
   }) {
     return Container(
       width: double.infinity,
@@ -569,9 +604,7 @@ const SnackBar(content: Text('서버와 연결할 수 없습니다. 백엔드 �
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            print("$text 클릭됨");
-          },
+          onTap: onTap,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
