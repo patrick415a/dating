@@ -15,7 +15,14 @@ import 'screens/diary_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/map_search_screen.dart';
 
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+
 void main() {
+  KakaoSdk.init(
+    // 여기에 api key 입력
+    javaScriptAppKey: '카카오_자바스크립트_키',
+  );
+
   runApp(const DatingApp());
 }
 

@@ -157,7 +157,7 @@ Future<void> _loginToBackend() async {
   // 승인 대기 코드를 우선 확인하고, 이전 서버의 응답 문구도 호환합니다.
   if (data['code'] == 'PROFILE_REVIEW_PENDING' ||
       data['message']?.contains('프로필 검사') == true ||
-      data['message']?.contains('수질 검사') == true){
+      data['message']?.contains('프로필 검사') == true){
     if(mounted) {
       Navigator.push(
         context,
@@ -187,23 +187,100 @@ Future<void> _loginToBackend() async {
   }
   }
 
-  String get _socialApiUrl {
-    return "";
+  String get _socialApiUrl{
+    //내용
+    if (kIsWeb) {
+      return 'http://localhost:3000/api/social-login';
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:3000/api/social-login';
+    } else {
+      return 'http://localhost:3000/api/social-login';
+    }
   }
+
 
   // 공통 소셜 로그인 통신 함수
   Future<void> _socialLoginToBackend(String email, String provider, String providerId, String nickname) async {
+    //내용
+    try {
+      final response = await http.post(
+        Uri.parse(_socialApiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'provider': provider,
+          'provider_id': providerId,
+          'nickname': nickname,
+        }),
+      );
+      final data = jsonDecode(response.body);
 
+      if (response.statusCode == 200 && data['success'] == true) {
+        if (mounted) {
+          final user = data['user'];
+          if (user['phone_number'] == null || user['occupation'] == null) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => SecondarySignupScreen(userId: user['id'])),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (context) => const RootScreen()),
+            );
+          }
+        }
+      } else if (response.statusCode == 403) {
+        if (data['message'] != null && data['message'].contains('프로필 검사')) {
+          if (mounted) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingApprovalScreen()));
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['message']), backgroundColor: Colors.redAccent));
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['message'] ?? '소셜 로그인 실패')));
+      }
+    } catch (e) {
+      print('소셜 로그인 통신 에러: $e');
+    }
   }
 
   // 카카오 로그인 실행 함수 
   Future<void> _loginWithKakao() async {
-
+    try {
+      bool isInstalled = await isKakaoTalkInstalled();
+      OAuthToken token = isInstalled 
+          ? await UserApi.instance.loginWithKakaoTalk() 
+          : await UserApi.instance.loginWithKakaoAccount();
+          
+      User user = await UserApi.instance.me();
+      
+      // 카카오 계정에 이메일이 없을 경우 고유 ID를 활용한 임시 이메일 생성
+      String email = user.kakaoAccount?.email ?? '${user.id}@kakao.com';
+      String nickname = user.kakaoAccount?.profile?.nickname ?? '카카오유저';
+      
+      await _socialLoginToBackend(email, 'kakao', user.id.toString(), nickname);
+    } catch (error) {
+      print('카카오 로그인 에러: $error');
+    }
   }
 
   // 구글 로그인 실행 함수
   Future<void> _loginWithGoogle() async {
-    
+    //내용
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser != null) {
+        await _socialLoginToBackend(
+          googleUser.email, 
+          'google', 
+          googleUser.id, 
+          googleUser.displayName ?? '구글유저'
+        );
+      }
+    } catch (error) {
+      print('구글 로그인 에러: $error');
+    }
   }
   
   //[3] 화면을 그리는 메인 함수
