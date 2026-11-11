@@ -36,6 +36,7 @@ flutter:
 
   assets:
     - assets/audios/bgm.mp3
+    - assets/audios/family_and_love.mp3
 
   fonts:
     - family: Pretendard

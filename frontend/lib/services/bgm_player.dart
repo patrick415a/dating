@@ -12,8 +12,12 @@ class BgmPlayer {
     if (_isPlaying) return;
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop); // 무한 반복
+
+      // 🔊 볼륨 설정 (0.0 ~ 1.0)
+      await _audioPlayer.setVolume(0.3);
+
       // 💡 외부 인터넷 주소 대신 로컬 에셋 파일을 직접 재생 (CORS 문제 제로)
-      await _audioPlayer.play(AssetSource('audios/bgm.mp3'));
+      await _audioPlayer.play(AssetSource('audios/family_and_love.mp3'));
       _isPlaying = true;
       print("BgmPlayer: 로컬 BGM 재생 성공!");
     } catch (e) {
