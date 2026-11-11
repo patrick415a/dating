@@ -30,7 +30,8 @@ class _MapSearchScreenState extends State<MapSearchScreen> {
   String _selectedRadius = '반경 1km';
   final List radiusOptions = ['반경 1km', '반경 3km', '반경 5km'];
   
-  String _selectedAge = '20대 초중반';
+  // 미사용한다길래 주석처리
+  // String _selectedAge = '20대 초중반';
   final List ageOptions = ['20대 초중반', '20대 후반', '30대 초반', '상관없음'];
 
   Position? _currentPosition;
