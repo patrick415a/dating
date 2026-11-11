@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/bgm_toggle_button.dart';
+import 'login_screen.dart';
 
 import 'dart:convert';
 
@@ -807,6 +809,13 @@ class _MyPageScreenState extends State<MyPageScreen>
                   color: AppColors.text,
                 ),
               ),
+              toolbarHeight: 72,
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.only(right: 16),
+                  child: BgmToggleButton(),
+                ),
+              ],
             ),
             body: AnimatedBuilder(
               animation: _animController,
@@ -1058,11 +1067,10 @@ class _MyPageScreenState extends State<MyPageScreen>
   }
 
   Widget _buildMenuList() {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Material(
+      color: cardColor,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           _buildMenuTile(
@@ -1130,7 +1138,10 @@ class _MyPageScreenState extends State<MyPageScreen>
             ),
             trailing: const Icon(Icons.chevron_right, color: AppColors.borderStrong),
             onTap: () {
-              print("로그아웃 처리");
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
             },
           ),
         ],

@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/bgm_toggle_button.dart';
 
 import '../services/bgm_player.dart'; // 💡 BgmPlayer 서비스 임포트
 
@@ -65,6 +66,9 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+
+    // 첫 화면에서 바로 애니메이션 재생
+    BgmPlayer().playBgm();
     
     // 💡 2. 애니메이션 초기화 (총 1.2초 동안 진행)
     _animController = AnimationController(
@@ -336,7 +340,6 @@ Future<void> _loginToBackend() async {
            child: GestureDetector(
             onTap: () {
               FocusScope.of(context).unfocus();
-              BgmPlayer().playBgm(); // 💡 화면 터치 시 키보드 내리면서 BGM 재생
             },
             child: Scaffold(
               backgroundColor: bgColor,
@@ -347,10 +350,7 @@ Future<void> _loginToBackend() async {
                   // 화면 우측 상단의 은은한 빛 효과
                   SafeArea(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0,
-                        vertical: 40.0,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start, //왼쪽정렬
                         children: [ //애니메이션을 적용하므로 여기부터 바뀜이 .. 
@@ -378,10 +378,19 @@ Future<void> _loginToBackend() async {
                             opacity: _fade1,
                             child: SlideTransition(
                               position: _slide1,
-                              child: _buildLogo(),
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 48),
+                                  Expanded(child: _buildLogo()),
+                                  const SizedBox(
+                                    width: 48,
+                                    child: BgmToggleButton(),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 16),
 
                           // 2단계: 타이틀 애니메이션 적용
                           FadeTransition(
