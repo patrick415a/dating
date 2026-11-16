@@ -2,6 +2,10 @@
 
 A new Flutter project.
 
+flutter build web --base-href /group/two/1/
+
+flutter run -d chrome
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
