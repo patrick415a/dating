@@ -8,6 +8,18 @@ const SocialIdentity = require('../models/SocialIdentity');
 
 const router = express.Router();
 const redirectUri = new URL(process.env.DATING_OAUTH_REDIRECT_URI || 'http://localhost:3001/');
+const oauthRedirects = new Map([[redirectUri.origin, redirectUri.href]]);
+if (redirectUri.protocol === 'https:' && !redirectUri.port) {
+  const otherHost = new Map([
+    ['heartbreakkid.co.kr', 'www.heartbreakkid.co.kr'],
+    ['www.heartbreakkid.co.kr', 'heartbreakkid.co.kr'],
+  ]).get(redirectUri.hostname);
+  if (otherHost) {
+    const alternate = new URL(redirectUri);
+    alternate.hostname = otherHost;
+    oauthRedirects.set(alternate.origin, alternate.href);
+  }
+}
 const pending = new Map();
 const providers = new Map([
   ['google', {
@@ -44,10 +56,12 @@ function providerConfig(name) {
   return provider;
 }
 
-function requireBrowserOrigin(req) {
-  if (req.get('Origin') !== redirectUri.origin) {
+function redirectForBrowserOrigin(req) {
+  const callback = oauthRedirects.get(req.get('Origin'));
+  if (!callback) {
     throw new LoginError(403, '로그인 화면 주소와 리다이렉트 설정이 일치하지 않습니다.');
   }
+  return callback;
 }
 
 function randomToken() {
@@ -140,7 +154,7 @@ router.use((req, res, next) => {
 });
 
 router.post('/:provider/authorize', (req, res) => {
-  requireBrowserOrigin(req);
+  const callback = redirectForBrowserOrigin(req);
   const provider = providerConfig(req.params.provider);
   const now = Date.now();
   for (const [state, attempt] of pending) {
@@ -150,20 +164,20 @@ router.post('/:provider/authorize', (req, res) => {
 
   const state = randomToken();
   const verifier = randomToken();
-  pending.set(state, { provider: req.params.provider, verifier, expiresAt: now + 600000 });
+  pending.set(state, { provider: req.params.provider, verifier, callback, expiresAt: now + 600000 });
   const authorizationUrl = new URL(provider.authorize);
   authorizationUrl.search = new URLSearchParams({
-    client_id: provider.id, redirect_uri: redirectUri.href, response_type: 'code', state,
+    client_id: provider.id, redirect_uri: callback, response_type: 'code', state,
   });
   if (provider.scope) authorizationUrl.searchParams.set('scope', provider.scope);
   res.json({ authorizationUrl: authorizationUrl.href, verifier });
 });
 
 router.post('/complete', async (req, res) => {
-  requireBrowserOrigin(req);
+  const callback = redirectForBrowserOrigin(req);
   const { code, state, verifier } = req.body || {};
   const attempt = pending.get(state);
-  if (!attempt || attempt.expiresAt <= Date.now() || !isRandomToken(verifier)
+  if (!attempt || attempt.expiresAt <= Date.now() || attempt.callback !== callback || !isRandomToken(verifier)
       || typeof code !== 'string' || !code.trim() || code.length > 2048
       || !timingSafeEqual(Buffer.from(attempt.verifier), Buffer.from(verifier))) {
     throw new LoginError(400, '소셜 로그인 요청이 만료되었습니다. 처음부터 다시 시도해 주세요.');
@@ -174,7 +188,7 @@ router.post('/complete', async (req, res) => {
     method: 'POST',
     body: new URLSearchParams({
       grant_type: 'authorization_code', client_id: provider.id, client_secret: provider.secret,
-      redirect_uri: redirectUri.href, code,
+      redirect_uri: attempt.callback, code,
     }),
   });
   if (!token?.access_token) throw new LoginError(502, '소셜 로그인 토큰을 받지 못했습니다.');
@@ -230,4 +244,4 @@ router.use((error, req, res, next) => {
   res.status(500).json({ success: false, message: '소셜 로그인 처리 중 문제가 발생했습니다.' });
 });
 
-module.exports = { router, oauthOrigin: redirectUri.origin };
+module.exports = { router, oauthOrigins: [...oauthRedirects.keys()] };

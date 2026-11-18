@@ -17,11 +17,17 @@ const PointHistory = require('./models/PointHistory');
 // 라우터
 const matchRouter = require('./routes/match');
 const mapRouter = require('./routes/map');
-const { router: socialLoginRouter, oauthOrigin } = require('./routes/socialLogin');
+const { router: socialLoginRouter, oauthOrigins } = require('./routes/socialLogin');
 
 const app = express();
 
-app.use(cors({ origin: process.env.RENDER === 'true' ? ['http://heartbreakkid.co.kr', oauthOrigin] : '*' }));
+app.use(cors({
+  origin: process.env.RENDER === 'true' ? [
+    'http://heartbreakkid.co.kr', 'http://www.heartbreakkid.co.kr',
+    'https://heartbreakkid.co.kr', 'https://www.heartbreakkid.co.kr',
+    ...oauthOrigins,
+  ] : '*',
+}));
 app.use(express.json());
 
 // router 연결
