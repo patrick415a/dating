@@ -7,6 +7,7 @@ require('dotenv').config();
 // 모델 임포트
 const sequelize = require('./config/database');
 const User = require('./models/User');
+const SocialIdentity = require('./models/SocialIdentity');
 const Match = require('./models/Match');
 const Diary = require('./models/Diary');
 const Admin = require('./models/Admin');
@@ -16,15 +17,17 @@ const PointHistory = require('./models/PointHistory');
 // 라우터
 const matchRouter = require('./routes/match');
 const mapRouter = require('./routes/map');
+const { router: socialLoginRouter, oauthOrigin } = require('./routes/socialLogin');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: process.env.RENDER === 'true' ? ['http://heartbreakkid.co.kr', oauthOrigin] : '*' }));
 app.use(express.json());
 
 // router 연결
 app.use('/api/match', matchRouter);
 app.use('/api/map', mapRouter);
+app.use('/api/social-login', socialLoginRouter);
 
 const multer = require('multer');
 const path = require('path');
@@ -254,47 +257,11 @@ app.patch('/api/admin/users/:id/approve', async (req, res) => {
   }
 });
 
-app.post('/api/social-login', async (req, res) => {
-  const { email, provider, provider_id, nickname } = req.body;
-
-  try {
-    // 이미 가입 된 유저인지 이메일로 확인
-    let user = await User.findOne({where: {email}});
-    // 신규 유저라면 가입 처리
-    if(!user) {
-      // 비밀번호가 필요 없으나, 모델 조건 충족을 위해 provider_id를 암호화하여 저장
-      const hashedSocialPassword = await bcrypt.hash(provider_id, 10);
-
-      user = await User.create({
-        email: email,
-        password: hashedSocialPassword,
-        nickname: nickname,
-        age: 20,
-        gender: 'M',
-        status: 'PENDING'
-      });
-    }
-
-    // 상태검사
-    if(user.status === 'PENDING'){
-      return res.status(403).json({ success: false, message: '프로필 검사가 진행 중 입니다. 조금만 기다려주세요' });
-    }
-
-    // 영구 정지 유저
-    if(user.status === 'BANNED'){
-      return res.status(403).json({ success: false, message: '이용 수칙 위반으로 영구 정지된 계정입니다' });
-    }
-
-    res.json({success: true, message: `${provider}로그인에 성공하였습니다`, user});
-  }catch(e){
-    res.status(500).json({ success: false, message: '소셜 로그인 실패' });
-  }
-});
-
 const PORT = 3000;
 app.listen(PORT, async () => {
   try {
     await sequelize.authenticate();
+    await SocialIdentity.sync();
     // 👉 1. 기존에 꼬여있는 테이블들을 밀어버리기 위해 '관계 보호 장치'를 잠시 끕니다.
     // await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
     // 👉 2. 에러 없이 모든 테이블을 싹 지우고 완벽한 구조로 다시 만듭니다.

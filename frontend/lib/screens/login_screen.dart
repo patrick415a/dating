@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../services/api_url.dart';
+import '../services/oauth_browser.dart'
+    if (dart.library.js_interop) '../services/oauth_browser_web.dart';
 import '../services/remembered_email.dart';
 
 // add
@@ -102,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     // 화면이 렌더링된 직후 애니메이션 자동 실행
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _animController.forward();
+      if (kIsWeb) unawaited(_completeBrowserSocialLogin());
     });
   }
 
@@ -195,131 +200,127 @@ Future<void> _loginToBackend() async {
   }
 
 
-  //공통 소셜 로그인 백엔드 통신함수
-  Future<void> _socialLoginToBackend(String email, String provider, String providerId, String nickname) async{
-  //내용
-  try {
-      final response = await http.post(
-        apiUri('/api/social-login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'provider': provider,
-          'provider_id': providerId,
-          'nickname': nickname,
-        }),
-      );
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        if (mounted) {
-          final user = data['user'];
-          if (user['phone_number'] == null || user['occupation'] == null) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => SecondarySignupScreen(userId: user['id'])),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => const RootScreen()),
-            );
-          }
-        }
-      } else if (response.statusCode == 403) {
-        if (data['message'] != null && data['message'].contains('수질 검사')) {
-          if (mounted) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const PendingApprovalScreen()));
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['message']), backgroundColor: Colors.redAccent));
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['message'] ?? '소셜 로그인 실패')));
-      }
-    } catch (e) {
-      print('소셜 로그인 통신 에러: $e');
-    }
-  }
-
-  // 💡 카카오 로그인 실행 함수
-  Future<void> _loginWithKakao() async {
-    try {
-      bool isInstalled = await isKakaoTalkInstalled();
-      OAuthToken token = isInstalled 
-          ? await UserApi.instance.loginWithKakaoTalk() 
-          : await UserApi.instance.loginWithKakaoAccount();
-          
-      User user = await UserApi.instance.me();
-      
-      // 카카오 계정에 이메일이 없을 경우 고유 ID를 활용한 임시 이메일 생성
-      String email = user.kakaoAccount?.email ?? '${user.id}@kakao.com';
-      String nickname = user.kakaoAccount?.profile?.nickname ?? '카카오유저';
-      
-      await _socialLoginToBackend(email, 'kakao', user.id.toString(), nickname);
-    } catch (error) {
-      print('카카오 로그인 에러: $error');
-    }
-  }
-
-  // 💡 [1] 클래스 내부에 중복 클릭 방지용 상태 변수 추가
   bool _isSigningIn = false;
 
-  //구글 로그인 실행함수
-  Future<void> _loginWithGoogle() async {
-    //내용
-    // 이미 로그인이 진행 중이라면 중복 실행을 막기 위해 여기서 리턴!
-    if (_isSigningIn) return;
+  void _showSocialLoginError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
+    );
+  }
 
-    setState(() {
-      _isSigningIn = true;
-    });
+  Future<http.Response> _postSocial(String path, Map<String, String> body) {
+    return http
+        .post(
+          apiUri('/api/social-login/$path'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(Duration(seconds: path.endsWith('/authorize') ? 90 : 25));
+  }
 
-    try {
-      //add
-      const String webClientId = '957606689287-ge2ccniq0ml4jal532osk88pdau96o3h.apps.googleusercontent.com';
-
-      GoogleSignIn googleSignIn = GoogleSignIn(
-        // 💡 웹(크롬)일 때는 웹 클라이언트 ID를, 모바일일 때는 null(자동 설정)을 전달합니다.
-        clientId: kIsWeb ? webClientId : null,
+  void _handleSocialLogin(http.Response response) {
+    if (!mounted) return;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 && data['success'] == true) {
+      final user = data['user'] as Map<String, dynamic>;
+      final needsProfile = user['phone_number'] == null || user['occupation'] == null;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => needsProfile
+              ? SecondarySignupScreen(userId: user['id'])
+              : const RootScreen(),
+        ),
       );
-
-      //add
-
-      // 💡 [핵심 해결책] 웹에서 이미 이전 구글 객체가 대기 중이거나 충돌 상태일 수 있으므로
-      // 로그인 시도 전 강제로 signout을 한 번 호출하여 깨끗한 상태로 만듭니다.
-      if (kIsWeb) {
-        try {
-          await googleSignIn.signOut();
-        } catch (_) {}
-      }
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser != null) {
-        await _socialLoginToBackend(
-          googleUser.email, 
-          'google', 
-          googleUser.id, 
-          googleUser.displayName ?? '구글유저'
-        );
-      }
-    } catch (error) {
-      print('구글 로그인 에러: $error');
-      //add
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('구글 로그인 중 오류가 발생했습니다. 다시 시도해주세요.')),
-        );
-      }
-    } finally {//
-      // 💡 로그인이 성공하든 실패하든 끝나면 다시 상태 해제
-      if (mounted) {
-        setState(() {
-          _isSigningIn = false;
-        });
-      }
+    } else if (data['code'] == 'PROFILE_REVIEW_PENDING') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingApprovalScreen()),
+      );
+    } else {
+      _showSocialLoginError(data['message'] as String? ?? '소셜 로그인에 실패했습니다.');
     }
   }
-  
+
+  Future<void> _completeBrowserSocialLogin() async {
+    final parameters = Uri.base.queryParameters;
+    final code = parameters['code'];
+    final state = parameters['state'];
+    final error = parameters['error'];
+    if (code == null && state == null && error == null) return;
+
+    final verifier = takeBrowserLoginVerifier();
+    if (code == null || state == null || verifier == null || error != null) {
+      _showSocialLoginError(
+        error == 'access_denied'
+            ? '소셜 로그인이 취소되었습니다.'
+            : '소셜 로그인 요청을 확인할 수 없습니다. 다시 시도해 주세요.',
+      );
+      return;
+    }
+
+    setState(() => _isSigningIn = true);
+    try {
+      final response = await _postSocial('complete', {
+        'code': code, 'state': state, 'verifier': verifier,
+      });
+      _handleSocialLogin(response);
+    } catch (_) {
+      _showSocialLoginError('소셜 로그인을 완료하지 못했습니다. 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _isSigningIn = false);
+    }
+  }
+
+  Future<void> _loginWithKakao() => _startSocialLogin('kakao');
+
+  Future<void> _loginWithGoogle() => _startSocialLogin('google');
+
+  Future<void> _startSocialLogin(String provider) async {
+    if (_isSigningIn) return;
+    setState(() => _isSigningIn = true);
+    try {
+      if (kIsWeb) {
+        final response = await _postSocial('$provider/authorize', {});
+        if (!mounted) return;
+        if (response.statusCode != 200) {
+          _handleSocialLogin(response);
+          return;
+        }
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        beginBrowserLogin(data['authorizationUrl'] as String, data['verifier'] as String);
+        return;
+      }
+
+      String? token;
+      if (provider == 'google') {
+        const clientId = String.fromEnvironment('DATING_GOOGLE_CLIENT_ID');
+        final account = await GoogleSignIn(
+          serverClientId: clientId.isEmpty ? null : clientId,
+        ).signIn();
+        if (account == null) return;
+        token = (await account.authentication).idToken;
+      } else {
+        final appInstalled = await isKakaoTalkInstalled();
+        final credentials = appInstalled
+            ? await UserApi.instance.loginWithKakaoTalk()
+            : await UserApi.instance.loginWithKakaoAccount();
+        token = credentials.accessToken;
+      }
+      if (token == null || token.isEmpty) {
+        _showSocialLoginError('소셜 로그인 인증 정보를 확인하지 못했습니다.');
+        return;
+      }
+      final response = await _postSocial('native', {'provider': provider, 'token': token});
+      _handleSocialLogin(response);
+    } catch (_) {
+      _showSocialLoginError('소셜 로그인을 시작하지 못했습니다. 다시 시도해 주세요.');
+    } finally {
+      if (mounted) setState(() => _isSigningIn = false);
+    }
+  }
+
   //[3] 화면을 그리는 메인 함수
   @override
   Widget build(BuildContext context) {
