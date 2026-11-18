@@ -2,7 +2,7 @@
 
 A new Flutter project.
 
-flutter build web --base-href /group/two/1/
+flutter build web --base-href /group/two/1/ --dart-define=API_BASE_URL=https://date-backend-5hp4.onrender.com
 
 flutter run -d chrome
 

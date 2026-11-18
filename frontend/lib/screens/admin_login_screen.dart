@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import '../services/api_url.dart';
+import '../services/remembered_email.dart';
 import 'dart:ui'; // Glassmorphism(ImageFilter) 패키지
 
 // 관리자 대시보드 화면이 있다고 가정
@@ -20,7 +21,8 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   
-  bool _rememberMe = false;
+  bool _rememberEmail = false;
+  final _savedEmail = RememberedEmail('dating.savedAdminLoginEmail');
 
   // 🚀 순차적 슬라이드 다운 애니메이션을 위한 컨트롤러
   late final AnimationController _animController;
@@ -32,6 +34,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
   @override
   void initState() {
     super.initState();
+    _restoreEmail();
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1000),
@@ -66,18 +69,19 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
     _animController.forward();
   }
 
+  Future<void> _restoreEmail() async {
+    final email = await _savedEmail.read();
+    if (!mounted || email == null || _emailController.text.isNotEmpty) return;
+    _emailController.text = email;
+    setState(() => _rememberEmail = true);
+  }
+
   @override
   void dispose() {
     _animController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  String get _apiUrl {
-    if (kIsWeb) return 'http://localhost:3000/api/admin/login';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:3000/api/admin/login';
-    return 'http://localhost:3000/api/admin/login';
   }
 
   // ✨ 상단 글래스룩 토스트 호출 함수 (BuildContext context 명시)
@@ -100,6 +104,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+    final rememberEmail = _rememberEmail;
 
     if (email.isEmpty || password.isEmpty) {
       _showTopGlassToast(context, '이메일과 비밀번호를 모두 입력해 주세요', isError: true);
@@ -108,7 +113,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
 
     try {
       final response = await http.post(
-        Uri.parse(_apiUrl),
+        apiUri('/api/admin/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
@@ -116,6 +121,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
+        await _savedEmail.save(rememberEmail ? email : null);
         if (!mounted) return;
         _showTopGlassToast(context, '${data['name']}님, ${data['message']}', isError: false);
 
@@ -251,10 +257,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
                                   Row(
                                     children: [
                                       Checkbox(
-                                        value: _rememberMe,
+                                        value: _rememberEmail,
                                         onChanged: (value) {
                                           setState(() {
-                                            _rememberMe = value ?? false;
+                                            _rememberEmail = value ?? false;
                                           });
                                         },
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -262,7 +268,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen>
                                         checkColor: AppColors.onPrimary,
                                       ),
                                       const Text(
-                                        '로그인 유지',
+                                        '아이디 저장',
                                         style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                                       ),
                                     ],

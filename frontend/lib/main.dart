@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'services/api_url.dart';
 import 'theme/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -199,7 +200,7 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
 
   Future<void> fetchProfiles() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/api/profiles'));
+      final response = await http.get(apiUri('/api/profiles'));
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
         final List<dynamic> data = body['data'];
@@ -222,7 +223,7 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
   Future<void> handleSwipe(int targetUserId, String action) async {
     try {
       await http.post(
-        Uri.parse('http://localhost:3000/api/swipe'),
+        apiUri('/api/swipe'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'sender_id': 1, 'receiver_id': targetUserId, 'action': action}),
       );
@@ -289,7 +290,7 @@ class _DatingHomeScreenState extends State<DatingHomeScreen> {
         fit: StackFit.expand,
         children: [
           profile.photoUrl != null
-              ? Image.network(profile.photoUrl!, fit: BoxFit.cover)
+              ? Image.network(apiUri(profile.photoUrl!).toString(), fit: BoxFit.cover)
               : Container(
                   decoration: const BoxDecoration(gradient: LinearGradient(colors: [AppColors.primarySoft, AppColors.blush], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
                   child: const Center(child: Icon(Icons.person, size: 120, color: AppColors.border)),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_url.dart';
 import '../theme/app_theme.dart';
 
 // 서버 통신용 도구
@@ -129,16 +130,6 @@ class _SignupProfileScreenState extends State<SignupProfileScreen>
   }
 
   // 서버 주소 설정
-  String get _apiUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/signup';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000/api/signup';
-    } else {
-      return 'http://localhost:3000/api/signup';
-    }
-  }
-
   // ✨ 상단 글래스룩 토스트 호출 함수
   void _showTopGlassToast(BuildContext context, String message, {bool isError = false}) {
     late OverlayEntry overlayEntry;
@@ -174,7 +165,7 @@ class _SignupProfileScreenState extends State<SignupProfileScreen>
     final ageText = _ageController.text;
     final bio = _bioController.text;
 
-    var request = http.MultipartRequest('POST', Uri.parse(_apiUrl));
+    var request = http.MultipartRequest('POST', apiUri('/api/signup'));
 
     request.fields['email'] = email;
     request.fields['password'] = password;

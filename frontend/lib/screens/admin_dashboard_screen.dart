@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import '../services/api_url.dart';
 import 'dart:ui'; // Glassmorphism(ImageFilter) 패키지
 import 'admin_login_screen.dart';
 
@@ -20,12 +20,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   
   List<dynamic> _users = [];
   bool _isLoading = true;
-
-  String get _baseUrl {
-    if (kIsWeb) return 'http://localhost:3000';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:3000';
-    return 'http://localhost:3000';
-  }
 
   @override
   void initState() {
@@ -53,7 +47,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _fetchUsers() async {
     setState(() => _isLoading = true);
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/api/admin/users'));
+      final response = await http.get(apiUri('/api/admin/users'));
       final data = jsonDecode(response.body);
       
       if (response.statusCode == 200 && data['success'] == true) {
@@ -75,7 +69,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _approveUser(int userId, String nickname) async {
     try {
-      final response = await http.patch(Uri.parse('$_baseUrl/api/admin/users/$userId/approve'));
+      final response = await http.patch(apiUri('/api/admin/users/$userId/approve'));
       if (response.statusCode == 200) {
         _showTopGlassToast(context, '$nickname 님 프로필 검사 통과(승인) 완료!', isError: false);
         _fetchUsers(); 
@@ -133,7 +127,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   radius: 24,
                                   backgroundColor: AppColors.primarySoft,
                                   backgroundImage: user['profile_image_main'] != null 
-                                      ? NetworkImage('$_baseUrl${user['profile_image_main']}') 
+                                      ? NetworkImage(apiUri(user['profile_image_main'] as String).toString())
                                       : null,
                                   child: user['profile_image_main'] == null 
                                       ? const Icon(Icons.person, color: AppColors.text) 
@@ -251,7 +245,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             borderRadius: BorderRadius.circular(12),
             child: hasImage
                 ? Image.network(
-                    '$_baseUrl$imagePath',
+                    apiUri(imagePath).toString(),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return const Center(

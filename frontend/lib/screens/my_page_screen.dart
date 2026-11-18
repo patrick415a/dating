@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_url.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bgm_toggle_button.dart';
 import 'login_screen.dart';
@@ -616,7 +617,7 @@ class _MyPageScreenState extends State<MyPageScreen>
   Future<void> _fetchMyPageData() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/api/mypage/1'),
+        apiUri('/api/mypage/1'),
       );
       if (response.statusCode == 200) {
         setState(() {

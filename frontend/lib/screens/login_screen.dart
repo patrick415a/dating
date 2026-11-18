@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/api_url.dart';
+import '../services/remembered_email.dart';
 
 // add
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
@@ -56,7 +58,8 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   final Color subTextColor = AppColors.textSecondary; //오타
 
   //[2] 상태 관리 변수들
-  bool _stayLoggedIn = true; //로그인 상태 유지 체크박스 상태(기본값:체크됨)
+  bool _rememberEmail = false;
+  final _savedEmail = RememberedEmail('dating.savedLoginEmail');
 
   //사용자가 입력한 이메일과 비밀번호를 읽어오기 위한
   final TextEditingController _emailController = TextEditingController();
@@ -66,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    _restoreEmail();
 
     // 첫 화면에서 바로 애니메이션 재생
     BgmPlayer().playBgm();
@@ -101,6 +105,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     });
   }
 
+  Future<void> _restoreEmail() async {
+    final email = await _savedEmail.read();
+    if (!mounted || email == null || _emailController.text.isNotEmpty) return;
+    _emailController.text = email;
+    setState(() => _rememberEmail = true);
+  }
+
   //추가
   @override
   void dispose() {
@@ -111,21 +122,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
   }
   
   //접속 기기에 맞취 로그인 API 주소 자동세팅
-  String get _apiUrl {
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/login';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000/api/login';
-    } else {
-      return 'http://localhost:3000/api/login';
-    }
-  }
-
 //추가 서버로 로그인 요청을 보내고 상태(승인대기, 정지 등)를 
 //판별하는 핵심 함수
 Future<void> _loginToBackend() async {
   final email = _emailController.text.trim();
   final password = _passwordController.text.trim();
+  final rememberEmail = _rememberEmail;
 
   //플루터에 특성상 스낵바가 나옴
   if(email.isEmpty || password.isEmpty) {
@@ -135,13 +137,14 @@ Future<void> _loginToBackend() async {
     return;
   } try{
     final response = await http.post(
-      Uri.parse(_apiUrl),
+      apiUri('/api/login'),
       headers: {'Content-Type':'application/json'},
       body:jsonEncode({'email':email, 'password':password}),
     );
     final data = jsonDecode(response.body);
   //로그인 성공 시 (상태가 ACTIVE)
   if(response.statusCode == 200 && data['success'] == true){
+    await _savedEmail.save(rememberEmail ? email : null);
     //if nest
     if (mounted) {
       final user = data['user'];
@@ -191,24 +194,13 @@ Future<void> _loginToBackend() async {
   }
   }
 
-  String get _socialApiUrl{
-    //내용
-    if (kIsWeb) {
-      return 'http://localhost:3000/api/social-login';
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000/api/social-login';
-    } else {
-      return 'http://localhost:3000/api/social-login';
-    }
-  }
-
 
   //공통 소셜 로그인 백엔드 통신함수
   Future<void> _socialLoginToBackend(String email, String provider, String providerId, String nickname) async{
   //내용
   try {
       final response = await http.post(
-        Uri.parse(_socialApiUrl),
+        apiUri('/api/social-login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -587,7 +579,7 @@ Future<void> _loginToBackend() async {
         //체크박스 부분 (클릭 가능하도록 묶어줌)
         GestureDetector(
           onTap: () {
-            setState(() => _stayLoggedIn = !_stayLoggedIn);
+            setState(() => _rememberEmail = !_rememberEmail);
           },
           child: Row(
             children: [
@@ -595,20 +587,20 @@ Future<void> _loginToBackend() async {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: _stayLoggedIn ? pinkAccent : Colors.transparent,
+                  color: _rememberEmail ? pinkAccent : Colors.transparent,
                   // 체크되면 핑크, 아니면 투명
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: _stayLoggedIn ? pinkAccent : subTextColor,
+                    color: _rememberEmail ? pinkAccent : subTextColor,
                   ),
                 ),
-                child: _stayLoggedIn
+                child: _rememberEmail
                     ? const Icon(Icons.check, size: 14, color: AppColors.onPrimary)
                     : null,
               ),
               const SizedBox(width: 8),
               Text(
-                '로그인 유지',
+                '아이디 저장',
                 style: TextStyle(color: subTextColor, fontSize: 14),
               ),
             ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import '../services/api_url.dart';
 import 'dart:ui'; // Glassmorphism(ImageFilter) 패키지
 
 import 'package:kpostal/kpostal.dart';
@@ -83,12 +83,6 @@ class _SecondarySignupScreenState extends State<SecondarySignupScreen>
     super.dispose();
   }
 
-  String get _apiUrl {
-    if (kIsWeb) return 'http://localhost:3000';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:3000';
-    return 'http://localhost:3000';
-  }
-
   // ✨ 상단 글래스룩 토스트 호출 함수
   void _showTopGlassToast(BuildContext context, String message, {bool isError = false}) {
     late OverlayEntry overlayEntry;
@@ -137,7 +131,7 @@ class _SecondarySignupScreenState extends State<SecondarySignupScreen>
     }
     try {
       final response = await http.patch(
-        Uri.parse('$_apiUrl/api/users/${widget.userId}/secondary-signup'),
+        apiUri('/api/users/${widget.userId}/secondary-signup'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'phone_number': _phoneController.text.trim(),
