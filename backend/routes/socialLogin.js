@@ -9,7 +9,7 @@ const SocialIdentity = require('../models/SocialIdentity');
 const router = express.Router();
 const redirectUri = new URL(process.env.DATING_OAUTH_REDIRECT_URI || 'http://localhost:3001/');
 const oauthRedirects = new Map([[redirectUri.origin, redirectUri.href]]);
-if (redirectUri.protocol === 'https:' && !redirectUri.port) {
+if (!redirectUri.port) {
   const otherHost = new Map([
     ['heartbreakkid.co.kr', 'www.heartbreakkid.co.kr'],
     ['www.heartbreakkid.co.kr', 'heartbreakkid.co.kr'],
